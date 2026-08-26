@@ -387,6 +387,10 @@
   }
   .day-header-left { display: flex; align-items: center; gap: 10px; }
   .day-header-left h2 { margin: 0; font-size: 20px; font-weight: 650; }
+  .day-content {
+    display: flex;
+    gap: 16px;
+  }
   .day-schedule {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -395,6 +399,8 @@
     position: relative;
     overflow-y: auto;
     max-height: 65vh;
+    flex: 1;
+    min-width: 0;
   }
   .hour-row {
     display: flex;
@@ -461,6 +467,114 @@
 
   .input-error { outline: 2px solid #ef4444 !important; outline-offset: -1px; }
 
+  .tasks-panel {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px;
+    max-height: 65vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .tasks-panel h3 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .tasks-input-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+  .tasks-input-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .tasks-input-row input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+  }
+  .tasks-input-row button {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .tasks-input-row button:hover { background: var(--accent-hover); }
+  .tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 4px 2px;
+  }
+  .task-check {
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    border: 1.5px solid var(--text-muted);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    cursor: pointer;
+  }
+  .task-item.completed .task-check { background: var(--accent); border-color: var(--accent); }
+  .task-text {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+    word-break: break-word;
+    cursor: pointer;
+  }
+  .task-item.completed .task-text { text-decoration: line-through; color: var(--text-muted); }
+  .task-delete {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0 2px;
+  }
+  .task-delete:hover { color: #ef4444; }
+  .tasks-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 4px 2px;
+  }
+
+  @media (max-width: 640px) {
+    .day-content { flex-direction: column; }
+    .tasks-panel { width: 100%; max-height: none; }
+  }
+
   .repeat-days {
     display: flex;
     gap: 6px;
@@ -524,7 +638,17 @@
       </div>
       <button class="primary-btn" id="dayAddEventBtn">+ Add Event</button>
     </div>
-    <div class="day-schedule" id="daySchedule"></div>
+    <div class="day-content">
+      <div class="day-schedule" id="daySchedule"></div>
+      <div class="tasks-panel">
+        <h3>Tasks</h3>
+        <div class="tasks-input-row">
+          <input type="text" id="taskInput" placeholder="Add a task…" />
+          <button id="addTaskBtn">+</button>
+        </div>
+        <div class="tasks-list" id="tasksList"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -543,9 +667,13 @@
         <input type="date" id="eventDate" />
       </div>
       <div class="field">
-        <label>Time</label>
+        <label>Start Time</label>
         <input type="time" id="eventTime" required />
       </div>
+    </div>
+    <div class="field">
+      <label>End Time <span style="font-weight:400; text-transform:none; letter-spacing:normal;">(optional)</span></label>
+      <input type="time" id="eventEndTime" />
     </div>
     <div class="field" id="repeatField">
       <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
@@ -721,11 +849,12 @@
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.categories) && Array.isArray(parsed.events)) {
+          if (!Array.isArray(parsed.tasks)) parsed.tasks = [];
           return parsed;
         }
       }
     } catch (e) {}
-    return { categories: DEFAULT_CATEGORIES.slice(), events: [] };
+    return { categories: DEFAULT_CATEGORIES.slice(), events: [], tasks: [] };
   }
 
   function saveData() {
@@ -857,7 +986,8 @@
 
         const text = document.createElement("span");
         text.className = "event-pill-text";
-        text.textContent = (ev.time ? ev.time + " " : "") + ev.title;
+        const timeLabel = ev.time ? (ev.time + (ev.endTime ? "–" + ev.endTime : "")) : "";
+        text.textContent = (timeLabel ? timeLabel + " " : "") + ev.title;
         pill.appendChild(text);
 
         pill.addEventListener("click", (e) => {
@@ -896,6 +1026,7 @@
   const eventTitleInput = document.getElementById("eventTitle");
   const eventDateInput = document.getElementById("eventDate");
   const eventTimeInput = document.getElementById("eventTime");
+  const eventEndTimeInput = document.getElementById("eventEndTime");
   const eventCompletedInput = document.getElementById("eventCompleted");
   const eventColorOptions = document.getElementById("eventColorOptions");
 
@@ -1058,6 +1189,7 @@
       eventModalTitle.textContent = "Edit Event";
       eventTitleInput.value = ev.title;
       eventTimeInput.value = ev.time || "";
+      eventEndTimeInput.value = ev.endTime || "";
       eventCompletedInput.checked = !!ev.completed;
       selectedCategoryId = ev.categoryId;
       updateLocationFieldsForCategory(selectedCategoryId);
@@ -1087,6 +1219,7 @@
       eventModalTitle.textContent = "New Event";
       eventTitleInput.value = "";
       eventTimeInput.value = "";
+      eventEndTimeInput.value = "";
       eventCompletedInput.checked = false;
       selectedCategoryId = state.categories[0].id;
       updateLocationFieldsForCategory(selectedCategoryId);
@@ -1115,6 +1248,8 @@
     if (!date) { flashError(eventDateInput); return; }
     const time = eventTimeInput.value;
     if (!time) { flashError(eventTimeInput); return; }
+    const endTime = eventEndTimeInput.value;
+    if (endTime && endTime <= time) { flashError(eventEndTimeInput); return; }
     const { location, isExam } = resolveLocationAndExam();
     const completed = eventCompletedInput.checked;
     const id = eventIdInput.value;
@@ -1124,6 +1259,7 @@
       ev.title = title;
       ev.date = date;
       ev.time = time;
+      ev.endTime = endTime;
       ev.location = location;
       ev.isExam = isExam;
       ev.completed = completed;
@@ -1133,10 +1269,10 @@
       const skipHolidays = selectedCategoryId === "class";
       const dates = generateSeriesDates(date, repeatUntilInput.value || date, selectedRepeatDays, skipHolidays);
       dates.forEach(d => {
-        state.events.push({ id: uid(), seriesId, title, date: d, time, location, isExam, completed: false, categoryId: selectedCategoryId });
+        state.events.push({ id: uid(), seriesId, title, date: d, time, endTime, location, isExam, completed: false, categoryId: selectedCategoryId });
       });
     } else {
-      state.events.push({ id: uid(), title, date, time, location, isExam, completed, categoryId: selectedCategoryId });
+      state.events.push({ id: uid(), title, date, time, endTime, location, isExam, completed, categoryId: selectedCategoryId });
     }
     saveData();
     renderCalendar();
@@ -1203,6 +1339,7 @@
     monthView.style.display = "none";
     dayView.style.display = "block";
     renderDaySchedule(dateKey);
+    renderTasks(dateKey);
   }
 
   function closeDayView() {
@@ -1231,6 +1368,7 @@
       slot.addEventListener("click", () => {
         openEventModal(dateKey, null);
         eventTimeInput.value = `${String(h).padStart(2, "0")}:00`;
+        eventEndTimeInput.value = `${String((h + 1) % 24).padStart(2, "0")}:00`;
       });
       row.appendChild(slot);
 
@@ -1242,11 +1380,14 @@
     const dayEvents = state.events.filter(e => e.date === dateKey);
 
     dayEvents.forEach(ev => {
-      const mins = minutesFromTime(ev.time);
+      const startMins = minutesFromTime(ev.time);
+      const endMins = ev.endTime ? minutesFromTime(ev.endTime) : startMins + 30;
+      const durationPx = Math.max((endMins - startMins) / 60 * HOUR_HEIGHT - 4, 22);
       const block = document.createElement("div");
       block.className = "day-event-block" + (ev.completed ? " completed" : "");
       block.style.background = getEventColor(ev);
-      block.style.top = `${(mins / 60) * HOUR_HEIGHT + 2}px`;
+      block.style.top = `${(startMins / 60) * HOUR_HEIGHT + 2}px`;
+      block.style.height = `${durationPx}px`;
 
       const titleRow = document.createElement("div");
       titleRow.className = "day-event-block-title";
@@ -1261,7 +1402,8 @@
       titleRow.appendChild(check);
 
       const titleText = document.createElement("span");
-      titleText.textContent = `${ev.time} · ${ev.title}`;
+      const timeLabel = ev.time + (ev.endTime ? " – " + ev.endTime : "");
+      titleText.textContent = `${timeLabel} · ${ev.title}`;
       titleRow.appendChild(titleText);
 
       block.appendChild(titleRow);
@@ -1291,6 +1433,77 @@
   document.getElementById("dayBackBtn").addEventListener("click", closeDayView);
   document.getElementById("dayAddEventBtn").addEventListener("click", () => {
     openEventModal(currentDayKey, null);
+  });
+
+  // ---------- Tasks ----------
+  const taskInput = document.getElementById("taskInput");
+  const addTaskBtn = document.getElementById("addTaskBtn");
+  const tasksList = document.getElementById("tasksList");
+
+  function renderTasks(dateKey) {
+    tasksList.innerHTML = "";
+    const dayTasks = state.tasks.filter(t => t.date === dateKey);
+
+    if (dayTasks.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "tasks-empty";
+      empty.textContent = "No tasks yet.";
+      tasksList.appendChild(empty);
+      return;
+    }
+
+    dayTasks.forEach(task => {
+      const item = document.createElement("div");
+      item.className = "task-item" + (task.completed ? " completed" : "");
+
+      const check = document.createElement("div");
+      check.className = "task-check";
+      check.textContent = task.completed ? "✓" : "";
+      check.addEventListener("click", () => toggleTaskCompleted(task.id));
+      item.appendChild(check);
+
+      const text = document.createElement("div");
+      text.className = "task-text";
+      text.textContent = task.text;
+      text.addEventListener("click", () => toggleTaskCompleted(task.id));
+      item.appendChild(text);
+
+      const del = document.createElement("div");
+      del.className = "task-delete";
+      del.textContent = "×";
+      del.addEventListener("click", () => deleteTask(task.id));
+      item.appendChild(del);
+
+      tasksList.appendChild(item);
+    });
+  }
+
+  function addTask() {
+    const text = taskInput.value.trim();
+    if (!text || !currentDayKey) return;
+    state.tasks.push({ id: uid(), date: currentDayKey, text, completed: false });
+    taskInput.value = "";
+    saveData();
+    renderTasks(currentDayKey);
+  }
+
+  function toggleTaskCompleted(id) {
+    const task = state.tasks.find(t => t.id === id);
+    if (!task) return;
+    task.completed = !task.completed;
+    saveData();
+    renderTasks(currentDayKey);
+  }
+
+  function deleteTask(id) {
+    state.tasks = state.tasks.filter(t => t.id !== id);
+    saveData();
+    renderTasks(currentDayKey);
+  }
+
+  addTaskBtn.addEventListener("click", addTask);
+  taskInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addTask();
   });
 
   // ---------- Category Modal ----------
