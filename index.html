@@ -168,6 +168,8 @@
   }
   .day-cell {
     min-height: 108px;
+    min-width: 0;
+    overflow: hidden;
     border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     padding: 6px;
@@ -201,6 +203,7 @@
     flex-direction: column;
     gap: 3px;
     overflow: hidden;
+    min-width: 0;
   }
   .event-pill {
     font-size: 11.5px;
@@ -211,6 +214,8 @@
     display: flex;
     align-items: center;
     gap: 5px;
+    min-width: 0;
+    width: 100%;
   }
   .event-pill:hover { filter: brightness(1.08); }
   .event-pill-text {
@@ -218,6 +223,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     flex: 1;
+    min-width: 0;
   }
   .event-pill.completed { opacity: .6; }
   .event-pill.completed .event-pill-text { text-decoration: line-through; }
